@@ -39,7 +39,7 @@ while game:
     display.show(the_map)
 
     # Take the direction action and update the snake body (eg per 0.5 sec)
-    if counter % 10 == 0:
+    if counter % 25 == 0:
         for i in reversed(range(len(snake_body))):
             if i == len(snake_body) - 1:
                 tail = snake_body[i]
@@ -70,5 +70,5 @@ while game:
                     generate_food()
             else:
                 snake_body[i] = snake_body[i-1].copy()
-    time.sleep(0.05)
+    time.sleep(0.002)
     counter += 1
