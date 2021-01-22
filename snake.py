@@ -1,74 +1,102 @@
-# Add your Python code here. E.g.
-from microbit import *
+"""A simple snake game for micro:bit chip"""
 
 import time
 import random
 
-# global initialization
-blank_map = ["0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]
-food = [0, 0]
-default_body = [[2, 2], [2, 3]]
-snake_body = default_body.copy()
-current_direction = 0
-counter = 0
-game = True
+# pylint: disable = E0401
+from microbit import (
+    display,
+    button_a,
+    button_b,
+    Image
+)
 
-def generate_food():
-    got_food = False
-    while not got_food:
-        food[0] = random.randint(0,4)
-        food[1] = random.randint(0,4)
-        if food not in snake_body:
-            got_food = True
+# pylint: enable = E0401
+
+
+N = 5  # row and column number in micro:bit
+
+
+class Game:
+    def __init__(self):
+        self.blank_map = ["0"] * (N ** 2)
+        self.food = [0, 0]  # food's position
+        self.counter = 0
+        self.finished = False
+
+    def generate_food(self, snake):
+        got_food = False
+        while not got_food:
+            self.food = [random.randint(0, N), random.randint(0, N)]
+            if self.food not in snake.body:
+                got_food = True
+
+    def generate_image(self, graph):
+        return Image(":".join(
+            [
+                graph[i: i + 5]
+                for i in range(0, N * N, N)
+            ]
+        ))
+
+
+class Snake:
+    def __init__(self):
+        self.snake.body = [[2, 2], [2, 3]]
+        self.direction = 0
+
+
+game = Game()
+snake = Snake()
 
 while game:
     # Button A make a left turn, Butten B make a right turn
     if button_a.was_pressed():
-        current_direction += 1
+        snake.direction += 1
     elif button_b.was_pressed():
-        current_direction -= 1
+        snake.direction -= 1
 
-    # Rendering the map per delay (eg per 0.05)
-    map_arr = blank_map.copy()
-    map_arr[food[1]*5 + food[0]] = "5"
-    for body in snake_body:
-        map_arr[body[1]*5 + body[0]] = "9"
-    the_map = "".join(map_arr)
-    the_map = the_map[:5] + ':' + the_map[5:10] + ':' + the_map[10:15] + ':' + the_map[15:20] + ':' + the_map[20:] 
-    the_map = Image(the_map)
-    display.show(the_map)
+    # Update snake body and food position
+    map_arr = game.blank_map.copy()
+    map_arr[food[1] * N + food[0]] = "5"
+    for body in snake.body:
+        map_arr[body[1] * N + body[0]] = "9"
+
+    # Rendering the map
+    display.show(game.generate_image(map_arr))
 
     # Take the direction action and update the snake body (eg per 0.5 sec)
-    if counter % 25 == 0:
-        for i in reversed(range(len(snake_body))):
-            if i == len(snake_body) - 1:
-                tail = snake_body[i]
-                snake_body[i] = snake_body[i-1].copy()
+    if game.counter % 25 == 0:
+        for i in reversed(range(len(snake.body))):
+            if i == len(snake.body) - 1:
+                tail = snake.body[i]
+                snake.body[i] = snake.body[i-1].copy()
             elif i == 0:
-                if current_direction % 4 == 0:
-                    snake_body[i][1] = snake_body[i][1] - 1
-                    if snake_body[i][1] < 0 or snake_body.count(snake_body[i]) >= 2:
+                if snake.direction % 4 == 0:
+                    snake.body[i][1] = snake.body[i][1] - 1
+                    if snake.body[i][1] < 0 or snake.body.count(snake.body[i]) >= 2:
                         game = False
                         break
-                elif current_direction % 4 == 1:
-                    snake_body[i][0] = snake_body[i][0] - 1
-                    if snake_body[i][0] < 0 or snake_body.count(snake_body[i]) >= 2:
+                elif snake.direction % 4 == 1:
+                    snake.body[i][0] = snake.body[i][0] - 1
+                    if snake.body[i][0] < 0 or snake.body.count(snake.body[i]) >= 2:
                         game = False
                         break
-                elif current_direction % 4 == 2:                        
-                    snake_body[i][1] = snake_body[i][1] + 1
-                    if snake_body[i][1] >= 5 or snake_body.count(snake_body[i]) >= 2:
+                elif snake.direction % 4 == 2:
+                    snake.body[i][1] = snake.body[i][1] + 1
+                    if snake.body[i][1] >= 5 or snake.body.count(snake.body[i]) >= 2:
                         game = False
                         break
-                elif current_direction % 4 == 3:                
-                    snake_body[i][0] = snake_body[i][0] + 1             
-                    if snake_body[i][0] >= 5 or snake_body.count(snake_body[i]) >= 2:
+                elif snake.direction % 4 == 3:
+                    snake.body[i][0] = snake.body[i][0] + 1
+                    if snake.body[i][0] >= 5 or snake.body.count(snake.body[i]) >= 2:
                         game = False
                         break
-                if snake_body[i] == food:
-                    snake_body.append(tail)
-                    generate_food()
+                if snake.body[i] == game.food:
+                    snake.body.append(tail)
+                    game.generate_food()
             else:
-                snake_body[i] = snake_body[i-1].copy()
+                snake.body[i] = snake.body[i-1].copy()
+
     time.sleep(0.002)
-    counter += 1
+    game.counter += 1
