@@ -2,101 +2,129 @@
 
 import time
 import random
+from collections import namedtuple
 
-# pylint: disable = E0401
-from microbit import (
-    display,
-    button_a,
-    button_b,
-    Image
-)
-
-# pylint: enable = E0401
+from microbit import display, button_a, button_b, Image
 
 
-N = 5  # row and column number in micro:bit
+
+# GAME SETTINGS
+
+# Map constant
+COL_LEN = 5  # row and column number in micro:bit
+MAP_LEN = COL_LEN ** 2
+
+# Point in Map, data structure
+point = namedtuple('point', ['x', 'y'])
+
+# Image: LED opacity settings.
+LIGHT, MEDIUM, DENSE = "0", "5", "9"
+
+# CLOCK: clock delay time and frequency
+CLOCK = 0.002  # Period 2 ms
+FRAME = 50  # How fast the snake goes
 
 
+"Game manager that keeps the game's status"
 class Game:
     def __init__(self):
-        self.blank_map = ["0"] * (N ** 2)
-        self.food = [0, 0]  # food's position
-        self.counter = 0
+        self.map = [LIGHT] * (COL_LEN ** 2)
+        self.food = point(0, 0)  # food's position
+        self.frame = 0
         self.finished = False
 
-    def generate_food(self, snake):
-        got_food = False
-        while not got_food:
-            self.food = [random.randint(0, N), random.randint(0, N)]
-            if self.food not in snake.body:
-                got_food = True
-
-    def generate_image(self, graph):
-        return Image(":".join(
-            [
-                graph[i: i + 5]
-                for i in range(0, N * N, N)
-            ]
-        ))
+    def generate_food(self, snake_body):
+        while 1:
+            new_food = point(random.randint(0, COL_LEN - 1), random.randint(0, COL_LEN - 1))
+            if not snake_body.count(new_food):
+                self.food = new_food
+                break
 
 
+"""Snake object that describe the snake's body and current moving direction"""
 class Snake:
     def __init__(self):
-        self.snake.body = [[2, 2], [2, 3]]
+        self.body = [point(2, 2), point(2, 3)]
         self.direction = 0
 
+
+"""Helper function that generates the string for Image input"""
+def generate_image(current_map):
+    graph = "".join(current_map)
+    return Image(":".join([graph[i: i + COL_LEN] for i in range(0, MAP_LEN, COL_LEN)]))
+
+
+# GAME!
 
 game = Game()
 snake = Snake()
 
-while game:
-    # Button A make a left turn, Butten B make a right turn
-    if button_a.was_pressed():
-        snake.direction += 1
-    elif button_b.was_pressed():
-        snake.direction -= 1
+while 1:
+    if not game.finished:
+        # Button A make a left turn, Butten B make a right turn
+        if button_a.was_pressed():
+            snake.direction += 1
+        elif button_b.was_pressed():
+            snake.direction -= 1
 
-    # Update snake body and food position
-    map_arr = game.blank_map.copy()
-    map_arr[food[1] * N + food[0]] = "5"
-    for body in snake.body:
-        map_arr[body[1] * N + body[0]] = "9"
+        # copy current game's map as current_map
+        current_map = game.map.copy()
 
-    # Rendering the map
-    display.show(game.generate_image(map_arr))
+        # mark the current game's food position as MEDIUM in the map
+        current_map[game.food.y * COL_LEN + game.food.x] = MEDIUM
 
-    # Take the direction action and update the snake body (eg per 0.5 sec)
-    if game.counter % 25 == 0:
-        for i in reversed(range(len(snake.body))):
-            if i == len(snake.body) - 1:
-                tail = snake.body[i]
-                snake.body[i] = snake.body[i-1].copy()
-            elif i == 0:
-                if snake.direction % 4 == 0:
-                    snake.body[i][1] = snake.body[i][1] - 1
-                    if snake.body[i][1] < 0 or snake.body.count(snake.body[i]) >= 2:
-                        game = False
-                        break
-                elif snake.direction % 4 == 1:
-                    snake.body[i][0] = snake.body[i][0] - 1
-                    if snake.body[i][0] < 0 or snake.body.count(snake.body[i]) >= 2:
-                        game = False
-                        break
-                elif snake.direction % 4 == 2:
-                    snake.body[i][1] = snake.body[i][1] + 1
-                    if snake.body[i][1] >= 5 or snake.body.count(snake.body[i]) >= 2:
-                        game = False
-                        break
-                elif snake.direction % 4 == 3:
-                    snake.body[i][0] = snake.body[i][0] + 1
-                    if snake.body[i][0] >= 5 or snake.body.count(snake.body[i]) >= 2:
-                        game = False
-                        break
-                if snake.body[i] == game.food:
-                    snake.body.append(tail)
-                    game.generate_food()
-            else:
-                snake.body[i] = snake.body[i-1].copy()
+        # mark snake's body as DENSE in the map
+        for body in snake.body:
+            current_map[body.y * COL_LEN + body.x] = DENSE
 
-    time.sleep(0.002)
-    game.counter += 1
+        # Rendering the map
+        display.show(generate_image(current_map))
+
+        # Take the direction action and update the snake body (eg per 0.5 sec)
+        if game.frame % FRAME == 0:
+            # avoid overflow
+            game.frame = 0
+
+            # Taking out snake's head, tail and middle
+            head = snake.body[0]
+            tail = snake.body[-1]
+            middle = snake.body[1:-1]
+            new_body = snake.body[:-1]
+            x, y = head
+
+            if snake.direction % 4 == 0:
+                # avoid overflow
+                snake.direction = 0
+                new_head = point(x, y - 1)  # UP
+                if new_head.y < 0 or snake.body.count(new_head) >= 2:
+                    game.finished = True
+            elif snake.direction % 4 == 1:
+                new_head = point(x - 1, y)  # LEFT
+                if new_head.x < 0 or snake.body.count(new_head) >= 2:
+                    game.finished = True
+            elif snake.direction % 4 == 2:
+                new_head = point(x, y + 1)  # DOWN
+                if new_head.y >= COL_LEN or snake.body.count(new_head) >= 2:
+                    game.finished = True
+            elif snake.direction % 4 == 3:
+                new_head = point(x + 1, y)  # RIGHT
+                if new_head.x >= COL_LEN or snake.body.count(new_head) >= 2:
+                    game.finished = True
+
+            if game.finished:
+                break
+
+            # Add new head to new_body
+            new_body.insert(0, new_head)
+
+            # Add tail if the snake gets the food
+            if new_head == game.food:
+                new_body.append(tail)
+                # generate game's new food
+                game.generate_food(new_body)
+
+            # finally replace snake whole body with new_body
+            snake.body = new_body.copy()
+
+    time.sleep(CLOCK)
+    game.frame += 1
