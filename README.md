@@ -14,7 +14,8 @@ The snake is intialized with length of *2*, where its body coordinates are *(2, 
 - Button B: RIGHT TURN
 
 ## Demo video
-{%youtube 5GJvIAlbfU0 %}
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/5GJvIAlbfU0/0.jpg)](https://www.youtube.com/watch?v=5GJvIAlbfU0)
+
 
 
 ## How it works
